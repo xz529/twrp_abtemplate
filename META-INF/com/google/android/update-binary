@@ -37,11 +37,14 @@ if [ ! -d $partdir ]; then
 fi
 
 # target partition without the slot suffix
-if [ -e ${partdir}/recovery_b ]; then
-  target=${partdir}/recovery;
+if [ -e ${partdir}/vendor_boot_a ] || [ -e ${partdir}/vendor_boot_b ]; then
+  target=${partdir}/vendor_boot;
 else
-  target=${partdir}/boot;
-fi;
+  if [ -e ${partdir}/recovery_a ]; then
+    target=${partdir}/recovery;
+  else
+    target=${partdir}/boot;
+  fi;
 name=$(basename $target);
 
 ui_print "Unpacking the installer...";
