@@ -1,6 +1,6 @@
 #!/sbin/sh
 # TWRP A/B & Vendor Boot Installer Backend
-# Modified for Vendor Boot support with smart hexpatch bypass
+# Modified for Vendor Boot support with smart hexpatch and repack bypass
 # By osm0sis, Dees_Troy, isus203 and topjohnwu
 
 OUTFD=/proc/self/fd/$2;
@@ -56,7 +56,13 @@ unzip -o "$ZIPFILE" -d $tmp || abort "Failed to extract zip!";
 
 cd $tmp;
 recoverycpio=`(ls ramdisk-twrp.cpio || ls ramdisk-recovery.cpio) 2>/dev/null`;
-recoveryimg=`(ls twrp*.img || ls TWRAP*.img || ls recovery.img) 2>/dev/null`;
+recoveryimg=`(ls twrp*.img || ls TWRAP*.img || ls recovery.img || ls vendor_boot*.img) 2>/dev/null`;
+
+# Verification: For vendor_boot devices, a pre-built .img file is required.
+if [ "$name" = "vendor_boot" ] && [ -z "$recoveryimg" ]; then
+  abort "Error: For vendor_boot devices you must provide a ready TWRP image (recovery.img / vendor_boot.img) inside the zip! CPIO patching is ignored due to multiple ramdisks.";
+fi;
+
 [ "$recoverycpio" ] || [ "$recoveryimg" ] || abort "No TWRP ramdisk/image found in zip!";
 
 chmod 755 magiskboot-arm*;
@@ -70,38 +76,39 @@ tool=./magiskboot;
 
 ui_print " ";
 for slot in _a _b; do
-  if [ "$recoverycpio" ]; then
+  local_img="${name}.img"
+  new_img="new-${name}.img"
+
+  # We patch the image on the fly only if there is a cpio ramdisk AND it is NOT the vendor_boot partition
+  if [ "$recoverycpio" ] && [ "$name" != "vendor_boot" ]; then
     ui_print "Running image patcher on $name$slot...";
-    dd bs=1048576 if=$target$slot of=boot.img || abort "Failed to dump image!";
-    $tool unpack -h boot.img || abort "Failed to unpack image!";
+    dd bs=1048576 if=$target$slot of=$local_img || abort "Failed to dump image!";
+    $tool unpack -h $local_img || abort "Failed to unpack image!";
 
-    # Check: Patch the kernel only if it is NOT vendor_boot
-    if [ "$name" != "vendor_boot" ]; then
-      # kernel string want_initramfs -> skip_initramfs (Magisk)
-      $tool hexpatch kernel 77616E745F696E697472616D6673 736B69705F696E697472616D6673;
-      # kernel string trip_initramfs -> skip_initramfs (SuperSU)
-      $tool hexpatch kernel 747269705F696E697472616D6673 736B69705F696E697472616D6673;
-    else
-      ui_print "Detected vendor_boot, skipping kernel hexpatch.";
-    fi;
+    # Patch the kernel (only on older devices where $name is boot or recovery)
+    $tool hexpatch kernel 77616E745F696E697472616D6673 736B69705F696E697472616D6673;
+    $tool hexpatch kernel 747269705F696E697472616D6673 736B69705F696E697472616D6673;
 
-    # boot.img/vendor_boot.img header cmdline remove skip_override (flar2 patch)
+    # boot.img header cmdline remove skip_override (flar2 patch)
     sed -i "s|$(grep '^cmdline=' header | cut -d= -f2-)|$(grep '^cmdline=' header | cut -d= -f2- | sed -e 's/skip_override//' -e 's/  */ /g' -e 's/[ \t]*$//')|" header;
 
     cp -f $recoverycpio ramdisk.cpio;
-    $tool repack boot.img || abort "Failed to repack image!";
+    $tool repack $local_img || abort "Failed to repack image!";
+    mv -f $local_img $new_img;
     $tool cleanup;
   else
-    ui_print "Flashing image to $name$slot...";
-    cp -f $recoveryimg new-boot.img;
+    # The script always comes here for vendor_boot, or if a ready-made .img file was fed to old partitions
+    ui_print "Bypassing repacker. Preparing clean flash for $name$slot...";
+    cp -f $recoveryimg $new_img;
   fi;
 
+  ui_print "Flashing $new_img to $name$slot...";
   blockdev --setrw $target$slot;
-  cat new-boot.img /dev/zero > $target$slot 2>/dev/null || true;
-  rm -f new-boot.img;
+  cat $new_img /dev/zero > $target$slot 2>/dev/null || true;
+  rm -f $new_img;
 done;
 
-if [ "$recoverycpio" ]; then
+if [ "$recoverycpio" ] && [ "$name" != "vendor_boot" ]; then
   ui_print " ";
   ui_print "Image patching complete!";
 fi;
@@ -115,4 +122,3 @@ if [ "$name" != "recovery" ]; then
   ui_print " ";
   ui_print "*** NOTE: You are now unrooted! ***";
 fi;
-
