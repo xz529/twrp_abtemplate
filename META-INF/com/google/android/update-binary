@@ -1,6 +1,7 @@
 #!/sbin/sh
-# TWRP A/B Installer Backend
-# by osm0sis, Dees_Troy and topjohnwu
+# TWRP A/B & Vendor Boot Installer Backend
+# Modified for Vendor Boot support with smart hexpatch bypass
+# By osm0sis, Dees_Troy, isus203 and topjohnwu
 
 OUTFD=/proc/self/fd/$2;
 ZIPFILE="$3";
@@ -36,15 +37,16 @@ if [ ! -d $partdir ]; then
   abort "Failed unable to find the partition!";
 fi
 
-# target partition without the slot suffix
+# Auto-detect target partition: vendor_boot -> recovery -> boot
 if [ -e ${partdir}/vendor_boot_a ] || [ -e ${partdir}/vendor_boot_b ]; then
   target=${partdir}/vendor_boot;
 else
-  if [ -e ${partdir}/recovery_a ]; then
+  if [ -e ${partdir}/recovery_b ]; then
     target=${partdir}/recovery;
   else
     target=${partdir}/boot;
   fi;
+fi;
 name=$(basename $target);
 
 ui_print "Unpacking the installer...";
@@ -54,7 +56,7 @@ unzip -o "$ZIPFILE" -d $tmp || abort "Failed to extract zip!";
 
 cd $tmp;
 recoverycpio=`(ls ramdisk-twrp.cpio || ls ramdisk-recovery.cpio) 2>/dev/null`;
-recoveryimg=`(ls twrp*.img || ls TWRP*.img || ls recovery.img) 2>/dev/null`;
+recoveryimg=`(ls twrp*.img || ls TWRAP*.img || ls recovery.img) 2>/dev/null`;
 [ "$recoverycpio" ] || [ "$recoveryimg" ] || abort "No TWRP ramdisk/image found in zip!";
 
 chmod 755 magiskboot-arm*;
@@ -73,12 +75,17 @@ for slot in _a _b; do
     dd bs=1048576 if=$target$slot of=boot.img || abort "Failed to dump image!";
     $tool unpack -h boot.img || abort "Failed to unpack image!";
 
-    # kernel string want_initramfs -> skip_initramfs (Magisk)
-    $tool hexpatch kernel 77616E745F696E697472616D6673 736B69705F696E697472616D6673;
-    # kernel string trip_initramfs -> skip_initramfs (SuperSU)
-    $tool hexpatch kernel 747269705F696E697472616D6673 736B69705F696E697472616D6673;
+    # Check: Patch the kernel only if it is NOT vendor_boot
+    if [ "$name" != "vendor_boot" ]; then
+      # kernel string want_initramfs -> skip_initramfs (Magisk)
+      $tool hexpatch kernel 77616E745F696E697472616D6673 736B69705F696E697472616D6673;
+      # kernel string trip_initramfs -> skip_initramfs (SuperSU)
+      $tool hexpatch kernel 747269705F696E697472616D6673 736B69705F696E697472616D6673;
+    else
+      ui_print "Detected vendor_boot, skipping kernel hexpatch.";
+    fi;
 
-    # boot.img header cmdline remove skip_override (flar2 patch)
+    # boot.img/vendor_boot.img header cmdline remove skip_override (flar2 patch)
     sed -i "s|$(grep '^cmdline=' header | cut -d= -f2-)|$(grep '^cmdline=' header | cut -d= -f2- | sed -e 's/skip_override//' -e 's/  */ /g' -e 's/[ \t]*$//')|" header;
 
     cp -f $recoverycpio ramdisk.cpio;
@@ -108,3 +115,4 @@ if [ "$name" != "recovery" ]; then
   ui_print " ";
   ui_print "*** NOTE: You are now unrooted! ***";
 fi;
+
