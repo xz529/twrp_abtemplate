@@ -1,4 +1,9 @@
 ## Universal TWRP Installer for A/B Devices (with Vendor Boot Support)
+
+## 👥 Author / Credits
+* **osm0sis**, **Dees_Troy**, **topjohnwu** — The original TWRP installer backend.
+* **isus203** — Modification of logic, structure, and addition of a smart bypass of ramdisk patching for vendor_boot and fixing of build bugs.
+
 This script is a universal TWRP installer backend designed for devices with A/B partition layouts. It automatically detects the target device architecture and switches between on-the-fly image patching or a direct clean flash of a pre-compiled .img file.
 
 ## ⚡ Key Features
