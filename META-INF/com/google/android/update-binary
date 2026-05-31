@@ -41,7 +41,7 @@ fi
 if [ -e ${partdir}/vendor_boot_a ] || [ -e ${partdir}/vendor_boot_b ]; then
   target=${partdir}/vendor_boot;
 else
-  if [ -e ${partdir}/recovery_b ]; then
+  if [ -e ${partdir}/recovery ]; then
     target=${partdir}/recovery;
   else
     target=${partdir}/boot;
