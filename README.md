@@ -25,6 +25,7 @@ Your_Installer.zip
 
 ## 🛠️ How to Pack Your Archive
 Depending on your smartphone's partition architecture, place the appropriate files into the root of the ZIP:
+
 Case 1: Modern Devices (Android 11-13+) with vendor_boot partition
 What to include: A pre-compiled, ready-to-flash TWRP image.
 Filename match: Must match twrp*.img, recovery.img, or vendor_boot*.img (e.g., vendor_boot.img).
