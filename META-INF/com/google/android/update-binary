@@ -56,7 +56,7 @@ unzip -o "$ZIPFILE" -d $tmp || abort "Failed to extract zip!";
 
 cd $tmp;
 recoverycpio=`(ls ramdisk-twrp.cpio || ls ramdisk-recovery.cpio) 2>/dev/null`;
-recoveryimg=`(ls twrp*.img || ls TWRAP*.img || ls recovery.img || ls vendor_boot*.img) 2>/dev/null`;
+recoveryimg=`(ls twrp*.img || ls boot.img || ls TWRAP*.img || ls recovery.img || ls vendor_boot*.img) 2>/dev/null`;
 
 # Verification: For vendor_boot devices, a pre-built .img file is required.
 if [ "$name" = "vendor_boot" ] && [ -z "$recoveryimg" ]; then
