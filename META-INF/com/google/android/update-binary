@@ -87,8 +87,8 @@ for slot in _a _b; do
     $tool unpack -h $local_img || abort "Failed to unpack image!";
 
     # Patch the kernel (only on older devices where $name is boot or recovery)
-    $tool hexpatch kernel 77616E745F696E697472616D6673 736B69705F696E697472616D6673;
-    $tool hexpatch kernel 747269705F696E697472616D6673 736B69705F696E697472616D6673;
+    $tool hexpatch kernel 77616E745F696E697472616D6673 736B69705F696E697472616D6673; # magisk
+    $tool hexpatch kernel 747269705F696E697472616D6673 736B69705F696E697472616D6673; # supersu
 
     # boot.img header cmdline remove skip_override (flar2 patch)
     sed -i "s|$(grep '^cmdline=' header | cut -d= -f2-)|$(grep '^cmdline=' header | cut -d= -f2- | sed -e 's/skip_override//' -e 's/  */ /g' -e 's/[ \t]*$//')|" header;
